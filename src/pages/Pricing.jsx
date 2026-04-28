@@ -380,6 +380,17 @@ function ModelCard({ model, vendor, index, displayMode }) {
               border: 'none',
             }}
           />
+          {model.billing_mode === 'tiered_expr' && (
+            <Tooltip title={model.billing_expr || ''}>
+              <Chip
+                label={t('阶梯计费')}
+                size="small"
+                color="secondary"
+                variant="outlined"
+                sx={{ fontSize: '0.6rem', height: 20, fontWeight: 700 }}
+              />
+            </Tooltip>
+          )}
           {(model.enable_groups || []).slice(0, 2).map((g, i) => (
             <Chip key={i} label={g} size="small" variant="outlined"
               sx={{ fontSize: '0.6rem', height: 20, opacity: 0.6 }} />
@@ -947,12 +958,13 @@ export default function Pricing() {
                               )}
                               <TableCell>
                                 <Chip
-                                  label={m.quota_type === 0 ? t('按量') : t('按次')}
+                                  label={m.billing_mode === 'tiered_expr' ? t('阶梯') : (m.quota_type === 0 ? t('按量') : t('按次'))}
                                   size="small"
+                                  title={m.billing_expr || undefined}
                                   sx={{
                                     fontSize: '0.68rem', border: 'none',
-                                    backgroundColor: m.quota_type === 0 ? billing.usage.bg : billing.request.bg,
-                                    color: m.quota_type === 0 ? billing.usage.text : billing.request.text,
+                                    backgroundColor: m.billing_mode === 'tiered_expr' ? alpha(theme.palette.secondary.main, 0.12) : m.quota_type === 0 ? billing.usage.bg : billing.request.bg,
+                                    color: m.billing_mode === 'tiered_expr' ? theme.palette.secondary.main : m.quota_type === 0 ? billing.usage.text : billing.request.text,
                                   }}
                                 />
                               </TableCell>

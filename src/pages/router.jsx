@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import AppLayout from '../components/layout/AppLayout';
@@ -80,7 +81,7 @@ export const router = createBrowserRouter([
       { path: 'task', element: <S><Task /></S> },
       { path: 'redemption', element: <AdminRoute><S><Redemption /></S></AdminRoute> },
       { path: 'topup', element: <S><TopUp /></S> },
-      { path: 'setting', element: <AdminRoute><S><SettingsPage /></S></AdminRoute> },
+      { path: 'setting', element: <RootRoute><S><SettingsPage /></S></RootRoute> },
       { path: 'personal', element: <S><PersonalSetting /></S> },
       { path: 'subscription', element: <AdminRoute><S><Subscription /></S></AdminRoute> },
       { path: 'models', element: <AdminRoute><S><ModelPage /></S></AdminRoute> },

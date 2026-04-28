@@ -29,7 +29,7 @@ export default function usePaginatedList(endpoint, options = {}) {
         ? `${searchEndpoint}?keyword=${encodeURIComponent(search)}`
         : endpoint;
       const sep = base.includes('?') ? '&' : '?';
-      const params = new URLSearchParams({ p: String(page), page_size: String(rowsPerPage), ...extraParams });
+      const params = new URLSearchParams({ p: String(page + 1), page_size: String(rowsPerPage), ...extraParams });
       const url = `${base}${sep}${params}`;
       const res = await API.get(url);
       if (res.data.success) {
@@ -44,6 +44,8 @@ export default function usePaginatedList(endpoint, options = {}) {
   }, [endpoint, searchEndpoint, page, rowsPerPage, search, extraParams]);
 
   useEffect(() => {
+    // Existing hook contract: auto-fetch when pagination/search inputs change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (autoFetch) fetchData();
   }, [fetchData, autoFetch]);
 

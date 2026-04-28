@@ -69,7 +69,7 @@ export default function Subscription() {
 
   const handleToggle = async (plan) => {
     try {
-      const res = await API.post(`/api/subscription/admin/plans/${plan.id}/status`, { enabled: !plan.enabled });
+      const res = await API.patch(`/api/subscription/admin/plans/${plan.id}`, { enabled: !plan.enabled });
       if (res.data.success) { showSuccess(t('状态已更新')); fetchPlans(); }
       else showError(res.data.message);
     } catch (err) { showError(err); }

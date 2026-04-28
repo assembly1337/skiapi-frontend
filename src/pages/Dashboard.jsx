@@ -148,7 +148,7 @@ export default function Dashboard() {
       try {
         const [statRes, logRes] = await Promise.all([
           isAdmin ? API.get('/api/log/stat') : API.get('/api/log/self/stat'),
-          isAdmin ? API.get('/api/log/?p=0&page_size=8') : API.get('/api/log/self?p=0&page_size=8'),
+          isAdmin ? API.get('/api/log/?p=1&page_size=8') : API.get('/api/log/self?p=1&page_size=8'),
         ]);
         if (statRes.data.success) setStats(statRes.data.data);
         if (logRes.data.success) {

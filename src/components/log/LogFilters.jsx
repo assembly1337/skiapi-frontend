@@ -13,6 +13,7 @@ const LOG_TYPES = [
   { value: 3, labelKey: '管理' },
   { value: 4, labelKey: '系统' },
   { value: 5, labelKey: '错误' },
+  { value: 6, labelKey: '退款' },
 ];
 
 const DATE_PRESETS = [

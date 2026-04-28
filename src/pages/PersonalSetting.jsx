@@ -14,6 +14,7 @@ import { API } from '../api';
 import { useAuth } from '../contexts/AuthContext';
 import { useStatus } from '../contexts/StatusContext';
 import { showError, showSuccess, renderQuota, copy } from '../utils';
+import { isSafeUrl } from '../utils/security';
 import PageHeader from '../components/common/PageHeader';
 import ConfirmDialog from '../components/common/ConfirmDialog';
 import { useTranslation } from 'react-i18next';
@@ -257,8 +258,16 @@ export default function PersonalSetting() {
       enabled: !!status?.oidc_enabled, bound: !!user?.oidc_id, boundValue: user?.oidc_id,
       onBind: () => {
         if (status?.oidc_authorization_endpoint && status?.oidc_client_id) {
-          const redirect = encodeURIComponent(`${window.location.origin}/oauth/oidc`);
-          window.location.href = `${status.oidc_authorization_endpoint}?client_id=${status.oidc_client_id}&redirect_uri=${redirect}&response_type=code&scope=openid profile email`;
+          if (!isSafeUrl(status.oidc_authorization_endpoint)) {
+            showError(t('OIDC授权地址不安全'));
+            return;
+          }
+          const authUrl = new URL(status.oidc_authorization_endpoint, window.location.origin);
+          authUrl.searchParams.set('client_id', status.oidc_client_id);
+          authUrl.searchParams.set('redirect_uri', `${window.location.origin}/oauth/oidc`);
+          authUrl.searchParams.set('response_type', 'code');
+          authUrl.searchParams.set('scope', 'openid profile email');
+          window.location.href = authUrl.toString();
         }
       }, onUnbind: null },
   ], [status, user, t]);

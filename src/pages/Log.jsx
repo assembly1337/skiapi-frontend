@@ -49,6 +49,25 @@ function truncate(str, maxLen = 60) {
   return str.length > maxLen ? str.slice(0, maxLen) + '...' : str;
 }
 
+function parseLogOther(value) {
+  if (!value || typeof value !== 'string') return {};
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function isSubscriptionBilling(log) {
+  return parseLogOther(log.other).billing_source === 'subscription';
+}
+
+function getSubscriptionQuota(log) {
+  const other = parseLogOther(log.other);
+  return other.subscription_consumed ?? other.subscription_pre_consumed ?? log.quota ?? 0;
+}
+
 export default function Log() {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -258,7 +277,13 @@ export default function Log() {
                       <TableCell sx={{ maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis' }}>{log.token_name || '-'}</TableCell>
                       <TableCell align="right" sx={{ fontFamily: 'monospace' }}>{log.prompt_tokens || 0}</TableCell>
                       <TableCell align="right" sx={{ fontFamily: 'monospace' }}>{log.completion_tokens || 0}</TableCell>
-                      <TableCell align="right">{renderQuota(log.quota || 0)}</TableCell>
+                      <TableCell align="right">
+                        {isSubscriptionBilling(log) ? (
+                          <Tooltip title={`${t('订阅抵扣')}: ${renderQuota(getSubscriptionQuota(log))}; ${t('钱包扣费')}: ${renderQuota(0)}`} arrow>
+                            <Chip size="small" color="secondary" variant="outlined" label={t('订阅抵扣')} />
+                          </Tooltip>
+                        ) : renderQuota(log.quota || 0)}
+                      </TableCell>
                       <TableCell align="right" sx={{ fontFamily: 'monospace', whiteSpace: 'nowrap' }}>
                         {log.use_time ? (
                           <Tooltip title={log.first_response_time ? `TTFT: ${log.first_response_time}ms` : ''} arrow>

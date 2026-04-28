@@ -1,16 +1,16 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box, Card, Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, TablePagination, Chip, IconButton, Stack, Button, Tooltip,
-  Checkbox, Switch, Tabs, Tab, TableSortLabel, alpha, useTheme,
+  Checkbox, Switch, Tabs, Tab, TableSortLabel,
 } from '@mui/material';
 import {
   Add, Edit, Delete, PlayArrow, Layers,
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { API } from '../api';
-import { showError, showSuccess, timestamp2string, extractList } from '../utils';
-import { CHANNEL_TYPES, CHANNEL_STATUS, getChannelTypeName } from '../constants';
+import { showError, showSuccess } from '../utils';
+import { CHANNEL_TYPES, CHANNEL_STATUS } from '../constants';
 import usePaginatedList from '../hooks/usePaginatedList';
 import PageHeader from '../components/common/PageHeader';
 import SearchBar from '../components/common/SearchBar';
@@ -22,7 +22,6 @@ import ChannelTestDialog from '../components/channel/ChannelTestDialog';
 
 export default function Channel() {
   const { t } = useTranslation();
-  const theme = useTheme();
   const [idSortDir, setIdSortDir] = useState('desc'); // 'asc' | 'desc' | null (backend default)
   const extraParams = useMemo(
     () => (idSortDir ? { id_sort: 'true' } : undefined),
@@ -50,23 +49,24 @@ export default function Channel() {
   const [typeFilter, setTypeFilter] = useState(0); // 0 = all
   const [allTypeCounts, setAllTypeCounts] = useState(null);
 
-  // Fetch ALL channels once (lightweight) to build accurate type tabs
+  // NewAPI returns global type_counts with the paginated channel response.
   useEffect(() => {
     (async () => {
       try {
-        const res = await API.get('/api/channel/?p=0&page_size=1000');
+        const res = await API.get('/api/channel/?p=1&page_size=1');
         if (res.data.success) {
-          const { items: all } = extractList(res.data);
           const counts = {};
-          all.forEach(ch => {
-            const ct = CHANNEL_TYPES.find(c => c.value === ch.type);
-            const label = ct?.label || `Type ${ch.type}`;
-            if (!counts[ch.type]) counts[ch.type] = { label, color: ct?.color, count: 0 };
-            counts[ch.type].count++;
+          Object.entries(res.data.data?.type_counts || {}).forEach(([type, count]) => {
+            const typeValue = Number(type);
+            const ct = CHANNEL_TYPES.find(c => c.value === typeValue);
+            const label = ct?.label || `Type ${typeValue}`;
+            counts[typeValue] = { label, color: ct?.color, count: Number(count) || 0 };
           });
-          setAllTypeCounts(counts);
+          if (Object.keys(counts).length) setAllTypeCounts(counts);
         }
-      } catch {}
+      } catch {
+        setAllTypeCounts(null);
+      }
     })();
   }, []);
 
@@ -97,7 +97,6 @@ export default function Channel() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [selected, setSelected] = useState([]);
-  const [batchMenu, setBatchMenu] = useState(null);
   const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [testChannel, setTestChannel] = useState(null);
 
@@ -131,15 +130,13 @@ export default function Channel() {
 
   // Batch operations
   const handleBatchTest = async () => {
-    setBatchMenu(null);
     const ids = selected.length > 0 ? selected : channels.map(c => c.id);
     for (const id of ids) { handleTest(id); }
   };
 
   const handleBatchDelete = async () => {
-    setBatchMenu(null);
     for (const id of selected) {
-      try { await API.delete(`/api/channel/${id}`); } catch {}
+      try { await API.delete(`/api/channel/${id}`); } catch (err) { showError(err); }
     }
     showSuccess(`${t('已删除')} ${selected.length} ${t('个渠道')}`);
     setSelected([]);
@@ -169,7 +166,7 @@ export default function Channel() {
             {selected.length > 0 && (
               <>
                 <Chip label={`${t('已选')} ${selected.length}`} color="primary" size="small" onDelete={() => setSelected([])} />
-                <Button size="small" variant="outlined" color="error" onClick={() => { setBatchMenu(null); handleBatchDelete(); }}>
+                <Button size="small" variant="outlined" color="error" onClick={handleBatchDelete}>
                   {t('批量删除')}
                 </Button>
               </>

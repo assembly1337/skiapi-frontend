@@ -396,33 +396,47 @@ export default function Settings() {
               <FormControlLabel control={<Switch checked={!!opt('StripePromotionCodesEnabled')} onChange={setBoolOpt('StripePromotionCodesEnabled')} />} label={t('启用促销码')} />
             </Grid>
           </Grid>
-          <SaveBtn keys={['StripeApiSecret', 'StripeWebhookSecret', 'StripePriceId', 'StripeUnitPrice', 'StripeMinTopUp']} />
+          <SaveBtn keys={['StripeApiSecret', 'StripeWebhookSecret', 'StripePriceId', 'StripeUnitPrice', 'StripeMinTopUp', 'StripePromotionCodesEnabled']} />
         </SC>
 
         <SC title="Creem">
           <Grid container spacing={2}>
-            <Grid size={12}><TextField fullWidth label="API Key" type="password" value={opt('CreemApiKey')} onChange={setOpt('CreemApiKey')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="API Key" type="password" value={opt('CreemApiKey')} onChange={setOpt('CreemApiKey')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Webhook Secret" type="password" value={opt('CreemWebhookSecret')} onChange={setOpt('CreemWebhookSecret')} /></Grid>
+            <Grid size={12}>
+              <FormControlLabel control={<Switch checked={!!opt('CreemTestMode')} onChange={setBoolOpt('CreemTestMode')} />} label={t('测试模式')} />
+            </Grid>
             <Grid size={12}>
               <JsonField label={t('产品配置 (JSON)')} value={opt('CreemProducts', '[]')} onChange={setRawOpt('CreemProducts')} rows={4}
-                helperText={t('格式: [{"productId":"xxx","name":"名称","price":10,"quantity":100000}]')} />
+                helperText={t('格式: [{"productId":"xxx","name":"名称","price":10,"currency":"USD","quota":100000}]')} />
             </Grid>
           </Grid>
-          <SaveBtn keys={['CreemApiKey', 'CreemProducts']} />
+          <SaveBtn keys={['CreemApiKey', 'CreemWebhookSecret', 'CreemTestMode', 'CreemProducts']} />
         </SC>
 
         <SC title="Waffo">
           <Grid container spacing={2}>
             <Grid size={12}>
               <FormControlLabel control={<Switch checked={!!opt('WaffoEnabled')} onChange={setBoolOpt('WaffoEnabled')} />} label={t('启用 Waffo')} />
+              <FormControlLabel control={<Switch checked={!!opt('WaffoSandbox')} onChange={setBoolOpt('WaffoSandbox')} />} label={t('沙箱模式')} />
             </Grid>
-            <Grid size={{ xs: 6, sm: 4 }}><TextField fullWidth label={t('商户ID')} value={opt('WaffoId')} onChange={setOpt('WaffoId')} /></Grid>
-            <Grid size={{ xs: 6, sm: 4 }}><TextField fullWidth label="API Key" type="password" value={opt('WaffoKey')} onChange={setOpt('WaffoKey')} /></Grid>
+            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('商户ID')} value={opt('WaffoMerchantId', opt('WaffoId'))} onChange={setOpt('WaffoMerchantId')} /></Grid>
+            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label="API Key" type="password" value={opt('WaffoApiKey', opt('WaffoKey'))} onChange={setOpt('WaffoApiKey')} /></Grid>
+            <Grid size={{ xs: 6, sm: 2 }}><TextField fullWidth label={t('单价')} type="number" value={opt('WaffoUnitPrice', 1)} onChange={setOpt('WaffoUnitPrice')} /></Grid>
+            <Grid size={{ xs: 6, sm: 2 }}><TextField fullWidth label={t('最低充值')} type="number" value={opt('WaffoMinTopUp', 1)} onChange={setOpt('WaffoMinTopUp')} /></Grid>
+            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('货币')} value={opt('WaffoCurrency', 'USD')} onChange={setOpt('WaffoCurrency')} /></Grid>
+            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('通知 URL')} value={opt('WaffoNotifyUrl')} onChange={setOpt('WaffoNotifyUrl')} /></Grid>
+            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('返回 URL')} value={opt('WaffoReturnUrl')} onChange={setOpt('WaffoReturnUrl')} /></Grid>
             <Grid size={12}><TextField fullWidth label={t('RSA 私钥')} multiline rows={3} value={opt('WaffoPrivateKey')} onChange={setOpt('WaffoPrivateKey')} /></Grid>
+            <Grid size={12}><TextField fullWidth label={t('Waffo 公钥证书')} multiline rows={3} value={opt('WaffoPublicCert')} onChange={setOpt('WaffoPublicCert')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Sandbox API Key" type="password" value={opt('WaffoSandboxApiKey')} onChange={setOpt('WaffoSandboxApiKey')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('Sandbox 私钥')} multiline rows={2} value={opt('WaffoSandboxPrivateKey')} onChange={setOpt('WaffoSandboxPrivateKey')} /></Grid>
+            <Grid size={12}><TextField fullWidth label={t('Sandbox 公钥证书')} multiline rows={2} value={opt('WaffoSandboxPublicCert')} onChange={setOpt('WaffoSandboxPublicCert')} /></Grid>
             <Grid size={12}>
               <JsonField label={t('支付方式 (JSON)')} value={opt('WaffoPayMethods', '[]')} onChange={setRawOpt('WaffoPayMethods')} rows={3} />
             </Grid>
           </Grid>
-          <SaveBtn keys={['WaffoId', 'WaffoKey', 'WaffoPrivateKey', 'WaffoPayMethods']} />
+          <SaveBtn keys={['WaffoEnabled', 'WaffoSandbox', 'WaffoMerchantId', 'WaffoApiKey', 'WaffoUnitPrice', 'WaffoMinTopUp', 'WaffoCurrency', 'WaffoNotifyUrl', 'WaffoReturnUrl', 'WaffoPrivateKey', 'WaffoPublicCert', 'WaffoSandboxApiKey', 'WaffoSandboxPrivateKey', 'WaffoSandboxPublicCert', 'WaffoPayMethods']} />
         </SC>
       </TabPanel>
 

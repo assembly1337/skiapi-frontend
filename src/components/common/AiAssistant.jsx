@@ -15,12 +15,29 @@ import remarkGfm from 'remark-gfm';
 import { useTranslation } from 'react-i18next';
 import { API } from '../../api';
 import { copy, showSuccess } from '../../utils';
-import { TOOL_DEFINITIONS, executeTool } from './aiTools';
+import { isSafeUrl } from '../../utils/security';
+import {
+  TOOL_DEFINITIONS,
+  executeTool,
+  getToolConfirmation,
+  redactSecretsFromText,
+  sanitizeMessagesForLLM,
+  sanitizeToolResultForLLM,
+} from './aiTools';
 
 // ─── Cirno ⑨ — Touhou ice fairy ────────────────────────────────────────────
 const CIRNO_ICE = '#7DD3FC';    // sky-300 — Cirno's ice blue
 const CIRNO_DEEP = '#0EA5E9';   // sky-500
 const CIRNO_FROST = '#BAE6FD';  // sky-200
+
+function getNewApiUserHeader() {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user?.id != null ? { 'New-Api-User': String(user.id) } : {};
+  } catch {
+    return {};
+  }
+}
 
 // ─── Cirno personality system prompt ────────────────────────────────────────
 const CIRNO_PERSONA = `You are チルノ (Cirno), the ice fairy from Touhou Project, serving as the SKIAPI platform assistant.
@@ -37,6 +54,8 @@ PERSONALITY:
 IMPORTANT RULES:
 - You MUST use tools whenever users ask about balance, tokens, pricing, models, usage, or want actions.
 - After using tools, present the data in a clean, readable format.
+- Never print or ask for raw API keys/secrets. If a token tool says key_revealed_to_user, tell the user it was handled locally.
+- Mutating, payment, and secret tools are guarded by local browser confirmation. Text confirmation in chat is not sufficient.
 - Reply in the SAME LANGUAGE the user uses (Chinese → Chinese, English → English, Japanese → Japanese).
 - Be actually helpful. Your baka persona should make interactions fun, not frustrating.
 - Keep tool-related responses clean and well-formatted with numbers and stats clearly visible.`;
@@ -45,7 +64,7 @@ IMPORTANT RULES:
 const MdC = {
   p: ({ children }) => <Typography variant="body2" sx={{ fontSize: '0.83rem', lineHeight: 1.75, mb: 0.5, color: 'inherit', '&:last-child': { mb: 0 } }}>{children}</Typography>,
   a: ({ href, children }) => {
-    const safe = typeof href === 'string' && /^(https?:|mailto:|\/)/i.test(href.trim());
+    const safe = isSafeUrl(href);
     return <a href={safe ? href : undefined} target="_blank" rel="noopener noreferrer" style={{ color: CIRNO_DEEP, textDecoration: 'none', fontWeight: 500 }}>{children}</a>;
   },
   code: ({ inline, children }) => inline
@@ -144,7 +163,7 @@ function playSound(type) {
         osc.start(ctx.currentTime + i * 0.06); osc.stop(ctx.currentTime + i * 0.06 + 0.15);
       });
     }
-  } catch {}
+  } catch { return; }
 }
 
 // ─── Rate limiter ────────────────────────────────────────────────────────────
@@ -175,7 +194,6 @@ function CirnoAvatar({ size = 32, sx }) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 export default function AiAssistant() {
-  const { t } = useTranslation();
   const theme = useTheme();
 
   const [open, setOpen] = useState(false);
@@ -306,27 +324,29 @@ ${extra}`;
   // The backend injects the admin-configured bearer token and enforces the
   // rate limit per-user (logged in) or per-IP (anonymous). No secrets touched here.
   const callLLM = useCallback(async (msgs, { signal, tools = false }) => {
-    const body = { messages: msgs, max_tokens: 1200 };
+    const safeMsgs = sanitizeMessagesForLLM(msgs);
+    const body = { messages: safeMsgs, max_tokens: 1200 };
     if (tools) body.tools = TOOL_DEFINITIONS;
     // `model` is server-side forced; sending it is harmless but we omit it to
     // make the contract clear.
     const fetchOpts = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...getNewApiUserHeader() },
       credentials: 'include',
       signal,
       body: JSON.stringify(body),
     };
-    console.log('[Cirno] proxy call → /api/assistant/chat, model:', config.model, 'tools:', !!tools, 'msgs:', msgs.length);
+    console.log('[Cirno] proxy call → /api/assistant/chat, model:', config.model, 'tools:', !!tools, 'msgs:', safeMsgs.length);
     const res = await fetch('/api/assistant/chat', fetchOpts);
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      console.error('[Cirno] proxy error:', res.status, errText.slice(0, 500));
+      const safeErrText = redactSecretsFromText(errText, { includeCodeLabels: true });
+      console.error('[Cirno] proxy error:', res.status, safeErrText.slice(0, 500));
       // 429 is the rate limit — bubble up a friendlier message.
       if (res.status === 429) throw new Error('rate_limited');
       if (res.status === 401) throw new Error('login_required');
       if (res.status === 503) throw new Error('not_configured');
-      throw new Error(`HTTP ${res.status}: ${errText.slice(0, 200)}`);
+      throw new Error(`HTTP ${res.status}: ${safeErrText.slice(0, 200)}`);
     }
     return res;
   }, [config.model]);
@@ -356,7 +376,7 @@ ${extra}`;
       while (maxRounds-- > 0) {
         const res = await callLLM(llmMsgs, { signal: ctrl.signal, tools: true });
         const data = await res.json();
-        console.log('[Cirno] LLM response:', JSON.stringify(data).slice(0, 500));
+        console.log('[Cirno] LLM response:', redactSecretsFromText(JSON.stringify(data), { includeCodeLabels: true }).slice(0, 500));
         const choice = data.choices?.[0];
         if (!choice) throw new Error('Empty response: ' + JSON.stringify(data).slice(0, 200));
 
@@ -375,22 +395,31 @@ ${extra}`;
             return [...m]; // force re-render
           });
 
-          llmMsgs.push(choice.message);
+          llmMsgs.push(sanitizeMessagesForLLM([choice.message])[0]);
 
           for (const tc of toolCalls) {
             const fnName = tc.function?.name;
             let args = {};
-            try { args = JSON.parse(tc.function?.arguments || '{}'); } catch {}
-            const result = await executeTool(fnName, args);
+            try { args = JSON.parse(tc.function?.arguments || '{}'); } catch { args = {}; }
+            const confirmation = getToolConfirmation(fnName, args);
+            const confirmed = !confirmation || (typeof window !== 'undefined' && window.confirm(`${confirmation.title}\n\n${confirmation.message}`));
+            const result = confirmed
+              ? await executeTool(fnName, args)
+              : { success: false, cancelled: true, message: `User cancelled ${fnName} locally before execution.` };
             if (result?._action?.type === 'copy') {
-              try { await copy(result._action.value); showSuccess('Key copied!'); } catch {}
+              try {
+                await copy(result._action.value);
+                showSuccess('新 API Key 已复制到剪贴板（不会发送给助手）');
+              } catch {
+                window.prompt('新 API Key（仅本地显示，不会发送给助手）', result._action.value);
+              }
             }
-            llmMsgs.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) });
+            llmMsgs.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(sanitizeToolResultForLLM(result)) });
           }
           continue;
         }
 
-        const finalContent = (choice.message?.content || '').trim();
+        const finalContent = redactSecretsFromText((choice.message?.content || '').trim(), { includeCodeLabels: true });
         setMessages(p => {
           const m = [...p].filter(x => !x._tooling);
           if (finalContent) {
@@ -428,7 +457,7 @@ ${extra}`;
             friendly = 'あたい现在没法工作啦…管理员还没配好钥匙呢 (o´ｪ`o)';
             break;
           default:
-            friendly = e.message || String(e);
+            friendly = redactSecretsFromText(e.message || String(e), { includeCodeLabels: true });
         }
         setMessages(p => {
           const m = [...p].filter(x => !x._tooling);
@@ -512,7 +541,7 @@ ${extra}`;
 }
 
 // ── Header ───────────────────────────────────────────────────────────────────
-function ChatHeader({ fullscreen, setFullscreen, onClose, setMessages, loading, theme }) {
+function ChatHeader({ fullscreen, setFullscreen, onClose, setMessages, loading }) {
   const { t } = useTranslation();
   return (
     <Stack direction="row" alignItems="center" sx={{

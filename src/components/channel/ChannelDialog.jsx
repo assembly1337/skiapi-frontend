@@ -50,9 +50,13 @@ export default function ChannelDialog({ open, onClose, channel, onSaved }) {
   const handleFetchModels = async () => {
     setFetchingModels(true);
     try {
-      const res = await API.get(`/api/channel/fetch_models`, {
-        params: { type: form.type, key: keys.join('\n'), base_url: form.base_url || '' },
-      });
+      const res = isEdit && channel?.id
+        ? await API.get(`/api/channel/fetch_models/${channel.id}`)
+        : await API.post('/api/channel/fetch_models', {
+          type: form.type,
+          key: keys.join('\n'),
+          base_url: form.base_url || '',
+        });
       if (res.data.success && res.data.data) {
         const fetched = Array.isArray(res.data.data) ? res.data.data.join(',') : String(res.data.data);
         setForm(f => ({ ...f, models: fetched }));

@@ -11,13 +11,46 @@ import {
 } from '@mui/icons-material';
 import { API } from '../api';
 import { showError, showSuccess, renderQuota, renderNumber, getQuotaDisplayType, timestamp2string, safeArray, copy } from '../utils';
+import { isSafeUrl } from '../utils/security';
 import { useAuth } from '../contexts/AuthContext';
 import PageHeader from '../components/common/PageHeader';
 import EmptyState from '../components/common/EmptyState';
 import TableSkeleton from '../components/common/TableSkeleton';
 import { useTranslation } from 'react-i18next';
 
-function InfoCard({ icon: Icon, title, value, subtitle, gradient }) {
+function openExternalUrl(url) {
+  if (!isSafeUrl(url)) return false;
+  const win = window.open(url, '_blank', 'noopener,noreferrer');
+  if (win) win.opener = null;
+  return true;
+}
+
+function parseCreemProducts(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseWaffoPayMethods(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function InfoCard({ icon, title, value, subtitle, gradient }) {
+  const IconComponent = icon;
   return (
     <Card sx={{ overflow: 'hidden' }}>
       <Box sx={{ height: 3, background: gradient }} />
@@ -28,7 +61,7 @@ function InfoCard({ icon: Icon, title, value, subtitle, gradient }) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: gradient, opacity: 0.85,
           }}>
-            <Icon sx={{ fontSize: 22, color: '#fff' }} />
+            <IconComponent sx={{ fontSize: 22, color: '#fff' }} />
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500, fontSize: '0.7rem', letterSpacing: 0.3 }}>
@@ -43,8 +76,9 @@ function InfoCard({ icon: Icon, title, value, subtitle, gradient }) {
   );
 }
 
-function SectionCard({ icon: Icon, title, children, color, action }) {
+function SectionCard({ icon, title, children, color, action }) {
   const theme = useTheme();
+  const IconComponent = icon;
   return (
     <Card>
       <CardContent sx={{ p: 3 }}>
@@ -52,7 +86,7 @@ function SectionCard({ icon: Icon, title, children, color, action }) {
           <Stack direction="row" spacing={1.5} alignItems="center">
             <Box sx={{ width: 36, height: 36, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center',
               bgcolor: alpha(color || theme.palette.primary.main, 0.1) }}>
-              <Icon sx={{ fontSize: 20, color: color || theme.palette.primary.main }} />
+              <IconComponent sx={{ fontSize: 20, color: color || theme.palette.primary.main }} />
             </Box>
             <Typography variant="h6" sx={{ fontWeight: 600 }}>{title}</Typography>
           </Stack>
@@ -101,6 +135,9 @@ export default function TopUp() {
     return null;
   };
   const currentDiscount = getDiscount(topUpCount);
+  const creemProducts = parseCreemProducts(topupInfo?.creem_products);
+  const waffoPayMethods = parseWaffoPayMethods(topupInfo?.waffo_pay_methods);
+  const hasWaffoChoices = topupInfo?.enable_waffo_topup && waffoPayMethods.length > 0;
 
   useEffect(() => {
     API.get('/api/user/topup/self').then(res => {
@@ -127,7 +164,8 @@ export default function TopUp() {
   useEffect(() => {
     if (!topupInfo || !topUpCount || topUpCount <= 0) { setPayAmount(null); return; }
     const isStripe = selectedPay === 'stripe';
-    const endpoint = isStripe ? '/api/user/stripe/amount' : '/api/user/amount';
+    const isWaffo = selectedPay === 'waffo' || selectedPay.startsWith('waffo:');
+    const endpoint = isStripe ? '/api/user/stripe/amount' : isWaffo ? '/api/user/waffo/amount' : '/api/user/amount';
     const handle = setTimeout(async () => {
       setCalcLoading(true);
       try {
@@ -155,18 +193,29 @@ export default function TopUp() {
   const handleOnlinePay = async (method) => {
     if (!topupInfo) return;
     const isStripe = method === 'stripe';
+    const waffoMatch = /^waffo(?::(\d+))?$/.exec(method);
+    const isWaffo = Boolean(waffoMatch);
+    const waffoPayMethodIndex = waffoMatch?.[1] != null ? Number(waffoMatch[1]) : null;
     if (isStripe && !topupInfo.enable_stripe_topup) return showError(t('管理员未开启Stripe充值！'));
-    if (!isStripe && !topupInfo.enable_online_topup) return showError(t('管理员未开启在线充值！'));
-    const min = isStripe ? (topupInfo.stripe_min_topup || 1) : (topupInfo.min_topup || 1);
+    if (isWaffo && !topupInfo.enable_waffo_topup) return showError(t('管理员未开启Waffo充值！'));
+    if (!isStripe && !isWaffo && !topupInfo.enable_online_topup) return showError(t('管理员未开启在线充值！'));
+    const min = isStripe ? (topupInfo.stripe_min_topup || 1) : isWaffo ? (topupInfo.waffo_min_topup || 1) : (topupInfo.min_topup || 1);
     if (!topUpCount || topUpCount < min) return showError(t('充值数量不能小于') + min);
 
     setSelectedPay(method);
     setPaying(true);
     try {
-      if (isStripe) {
-        const res = await API.post('/api/user/stripe/pay', { amount: parseInt(topUpCount), payment_method: 'stripe' });
-        if (res.data?.message === 'success' && res.data.data?.pay_link) {
-          window.open(res.data.data.pay_link, '_blank');
+      if (isStripe || isWaffo) {
+        const payload = isStripe
+          ? { amount: parseInt(topUpCount), payment_method: method }
+          : {
+              amount: parseInt(topUpCount),
+              ...(waffoPayMethodIndex != null ? { pay_method_index: waffoPayMethodIndex } : {}),
+            };
+        const res = await API.post(isStripe ? '/api/user/stripe/pay' : '/api/user/waffo/pay', payload);
+        const payUrl = res.data?.data?.pay_link || res.data?.data?.payment_url;
+        if (res.data?.message === 'success' && payUrl) {
+          if (!openExternalUrl(payUrl)) showError(t('支付链接不安全'));
         } else {
           showError(res.data?.data || res.data?.message || t('支付失败'));
         }
@@ -176,8 +225,13 @@ export default function TopUp() {
           // epay: POST form submission
           const params = res.data.data;
           const url = res.data.url;
+          if (!isSafeUrl(url)) {
+            showError(t('支付链接不安全'));
+            return;
+          }
           const form = document.createElement('form');
           form.action = url; form.method = 'POST'; form.target = '_blank';
+          form.rel = 'noopener noreferrer';
           for (const k in params) {
             const inp = document.createElement('input');
             inp.type = 'hidden'; inp.name = k; inp.value = params[k];
@@ -189,6 +243,27 @@ export default function TopUp() {
         } else {
           showError(res.data?.data || res.data?.message || t('支付失败'));
         }
+      }
+    } catch (err) {
+      showError(err);
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const handleCreemPay = async (product) => {
+    if (!topupInfo?.enable_creem_topup) return showError(t('管理员未开启Creem充值！'));
+    const productId = product.productId || product.product_id;
+    if (!productId) return showError(t('产品配置错误'));
+    setSelectedPay(`creem:${productId}`);
+    setPaying(true);
+    try {
+      const res = await API.post('/api/user/creem/pay', { product_id: productId, payment_method: 'creem' });
+      const payUrl = res.data?.data?.checkout_url;
+      if (res.data?.message === 'success' && payUrl) {
+        if (!openExternalUrl(payUrl)) showError(t('支付链接不安全'));
+      } else {
+        showError(res.data?.data || res.data?.message || t('支付失败'));
       }
     } catch (err) {
       showError(err);
@@ -245,7 +320,7 @@ export default function TopUp() {
       </Grid>
 
       {/* ── Online Recharge ── */}
-      {topupInfo && (topupInfo.enable_online_topup || topupInfo.enable_stripe_topup) && (
+      {topupInfo && (topupInfo.enable_online_topup || topupInfo.enable_stripe_topup || topupInfo.enable_waffo_topup || topupInfo.enable_creem_topup) && (
         <Box sx={{ mb: 3 }}>
           <SectionCard icon={Payment} title={t('在线充值')} color={theme.palette.success.main}>
             <Stack spacing={2}>
@@ -307,7 +382,13 @@ export default function TopUp() {
                   {t('选择支付方式')}
                 </Typography>
                 <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-                  {topupInfo.enable_online_topup && (topupInfo.pay_methods || []).map(m => (
+                  {(topupInfo.pay_methods || [])
+                    .filter(m => {
+                      if (m.type === 'waffo') return topupInfo.enable_waffo_topup && !hasWaffoChoices;
+                      if (m.type === 'stripe') return false;
+                      return topupInfo.enable_online_topup;
+                    })
+                    .map(m => (
                     <Button
                       key={m.type}
                       variant="outlined"
@@ -330,6 +411,36 @@ export default function TopUp() {
                       {paying && selectedPay === 'stripe' ? <CircularProgress size={16} /> : 'Stripe'}
                     </Button>
                   )}
+                  {hasWaffoChoices && waffoPayMethods.map((method, index) => {
+                    const key = `waffo:${index}`;
+                    return (
+                      <Button
+                        key={`${method.payMethodType || method.name || 'waffo'}:${index}`}
+                        variant="outlined"
+                        startIcon={<CreditCard />}
+                        disabled={paying && selectedPay === key}
+                        onClick={() => handleOnlinePay(key)}
+                        sx={{ borderRadius: 3, minWidth: 120 }}
+                      >
+                        {paying && selectedPay === key ? <CircularProgress size={16} /> : (method.name || 'Waffo')}
+                      </Button>
+                    );
+                  })}
+                  {topupInfo.enable_creem_topup && creemProducts.map(product => {
+                    const productId = product.productId || product.product_id;
+                    return (
+                      <Button
+                        key={productId || product.name}
+                        variant="outlined"
+                        startIcon={<CreditCard />}
+                        disabled={paying && selectedPay === `creem:${productId}`}
+                        onClick={() => handleCreemPay(product)}
+                        sx={{ borderRadius: 3, minWidth: 120 }}
+                      >
+                        {paying && selectedPay === `creem:${productId}` ? <CircularProgress size={16} /> : (product.name || 'Creem')}
+                      </Button>
+                    );
+                  })}
                 </Stack>
               </Box>
             </Stack>
@@ -337,7 +448,7 @@ export default function TopUp() {
         </Box>
       )}
 
-      {topupInfo && !topupInfo.enable_online_topup && !topupInfo.enable_stripe_topup && (
+      {topupInfo && !topupInfo.enable_online_topup && !topupInfo.enable_stripe_topup && !topupInfo.enable_waffo_topup && !topupInfo.enable_creem_topup && (
         <Alert severity="info" sx={{ mb: 3, borderRadius: 2 }}>
           {t('管理员未开启在线充值功能，请联系管理员开启或使用兑换码充值。')}
         </Alert>

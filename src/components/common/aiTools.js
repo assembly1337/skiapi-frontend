@@ -64,7 +64,7 @@ export const TOOL_DEFINITIONS = [
     type: 'function',
     function: {
       name: 'create_token',
-      description: 'Create a new API token/key for the user.',
+      description: 'Create a new API token/key for the user. Requires local browser confirmation before execution. Raw keys are copied locally only and are never returned to the model.',
       parameters: {
         type: 'object',
         properties: {
@@ -82,7 +82,7 @@ export const TOOL_DEFINITIONS = [
     type: 'function',
     function: {
       name: 'delete_token',
-      description: 'Delete an existing API token by its ID. Ask user to confirm before deleting.',
+      description: 'Delete an existing API token by its ID. Requires local browser confirmation before execution.',
       parameters: {
         type: 'object',
         properties: {
@@ -125,7 +125,7 @@ export const TOOL_DEFINITIONS = [
     type: 'function',
     function: {
       name: 'redeem_code',
-      description: 'Redeem a top-up code to add balance/quota to user account.',
+      description: 'Redeem a top-up code to add balance/quota to user account. Requires local browser confirmation before execution.',
       parameters: {
         type: 'object',
         properties: {
@@ -167,6 +167,124 @@ const PAGE_ROUTES = {
   channel: '/console/channel',
   settings: '/console/setting',
 };
+
+// ─── Secret redaction / local confirmation helpers ──────────────────────────
+const API_KEY_RE = /\bsk-[A-Za-z0-9][A-Za-z0-9_-]{8,}\b/g;
+const BEARER_RE = /\bBearer\s+[A-Za-z0-9._~+/=-]{16,}/gi;
+const SECRET_FIELD_RE = /^(key|api_key|apiKey|secret|client_secret|clientSecret|access_token|accessToken|refresh_token|refreshToken|password|code)$/i;
+const JSON_SECRET_FIELD_RE = /("(?:key|api_key|apiKey|secret|client_secret|clientSecret|access_token|accessToken|refresh_token|refreshToken|password|code)"\s*:\s*")[^"]+(")/gi;
+const LABELLED_SECRET_RE = /\b(api[_-]?key|secret|client[_-]?secret|access[_-]?token|refresh[_-]?token|password)\s*[:=]\s*["']?[^"'\s,;)}]+/gi;
+const LABELLED_SECRET_WITH_CODE_RE = /\b(api[_-]?key|secret|client[_-]?secret|access[_-]?token|refresh[_-]?token|password|code)\s*[:=]\s*["']?[^"'\s,;)}]+/gi;
+
+export function redactSecretsFromText(value, { includeCodeLabels = false } = {}) {
+  if (typeof value !== 'string') return value;
+  const labelled = includeCodeLabels ? LABELLED_SECRET_WITH_CODE_RE : LABELLED_SECRET_RE;
+  return value
+    .replace(API_KEY_RE, '[REDACTED_API_KEY]')
+    .replace(BEARER_RE, 'Bearer [REDACTED_SECRET]')
+    .replace(JSON_SECRET_FIELD_RE, '$1[REDACTED_SECRET]$2')
+    .replace(labelled, (match, label) => `${label}: [REDACTED_SECRET]`);
+}
+
+function sanitizeToolArguments(args) {
+  try {
+    return JSON.stringify(redactSecretsDeep(JSON.parse(args)));
+  } catch {
+    return redactSecretsFromText(args, { includeCodeLabels: true });
+  }
+}
+
+function redactSecretsDeep(value) {
+  if (typeof value === 'string') return redactSecretsFromText(value, { includeCodeLabels: true });
+  if (Array.isArray(value)) return value.map(redactSecretsDeep);
+  if (!value || typeof value !== 'object') return value;
+
+  const out = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (key.startsWith('_')) continue;
+    if (SECRET_FIELD_RE.test(key)) {
+      out[key] = item ? '[REDACTED_SECRET]' : item;
+    } else if (key === 'arguments' && typeof item === 'string') {
+      out[key] = sanitizeToolArguments(item);
+    } else {
+      out[key] = redactSecretsDeep(item);
+    }
+  }
+  return out;
+}
+
+export function sanitizeToolResultForLLM(result) {
+  return redactSecretsDeep(result || {});
+}
+
+export function sanitizeMessagesForLLM(messages = []) {
+  if (!Array.isArray(messages)) return [];
+  return messages.map(message => {
+    if (!message || typeof message !== 'object') return message;
+    if (message.role === 'user') {
+      return { ...message, content: redactSecretsFromText(message.content) };
+    }
+    return redactSecretsDeep(message);
+  });
+}
+
+function displayValue(value, fallback = '-') {
+  const text = String(value ?? fallback).replace(/\s+/g, ' ').trim() || fallback;
+  return redactSecretsFromText(text, { includeCodeLabels: true }).slice(0, 120);
+}
+
+export function getToolConfirmation(name, args = {}) {
+  switch (name) {
+    case 'create_token':
+      return {
+        title: '确认创建 API 密钥',
+        message: [
+          'AI 助手请求创建新的 API key。',
+          `名称: ${displayValue(args.name, '(未命名)')}`,
+          `额度: ${args.unlimited_quota ? 'unlimited' : displayValue(args.remain_quota ?? 500000)}`,
+          `模型: ${args.models ? displayValue(args.models) : 'all'}`,
+          `分组: ${args.group ? displayValue(args.group) : 'default'}`,
+          '确认后才会调用后端；生成的 raw key 只会在本地复制/展示，不会发送给模型。',
+        ].join('\n'),
+      };
+    case 'delete_token':
+      return {
+        title: '确认删除 API 密钥',
+        message: [
+          'AI 助手请求删除一个 API token。',
+          `Token ID: ${displayValue(args.token_id)}`,
+          '这是不可逆的修改操作。确认后才会调用后端。',
+        ].join('\n'),
+      };
+    case 'redeem_code':
+      return {
+        title: '确认兑换充值码',
+        message: [
+          'AI 助手请求兑换充值码并修改账户余额。',
+          `兑换码: 已提供${args.code ? ` (${String(args.code).length} chars)` : ''}`,
+          '确认后才会调用后端；兑换码不会出现在返回给模型的 tool result 中。',
+        ].join('\n'),
+      };
+    default:
+      return null;
+  }
+}
+
+function normalizeApiKey(key) {
+  if (!key) return '';
+  const text = String(key);
+  return text.startsWith('sk-') ? text : `sk-${text}`;
+}
+
+function withLocalAction(result, action) {
+  if (!action) return result;
+  Object.defineProperty(result, '_action', {
+    value: action,
+    enumerable: false,
+    configurable: true,
+  });
+  return result;
+}
 
 // ─── Tool Executors ──────────────────────────────────────────────────────────
 
@@ -241,8 +359,6 @@ async function calculate_remaining_usage({ model_name }) {
   const quotaPerUnit = parseFloat(localStorage.getItem('quota_per_unit') || '500000');
   const inputCostPerMToken = model.model_price > 0 ? (model.model_price * 2 / quotaPerUnit) : (model.model_ratio * 0.002);
   const outputCostPerMToken = inputCostPerMToken * model.completion_ratio;
-  const costPer1kInput = inputCostPerMToken / 1000 * quotaPerUnit;
-  const costPer1kOutput = outputCostPerMToken / 1000 * quotaPerUnit;
   const avgCostPerRequest = (500 * inputCostPerMToken + 500 * outputCostPerMToken) / 1_000_000 * quotaPerUnit;
   const remainingRequests = avgCostPerRequest > 0 ? Math.floor(balance / avgCostPerRequest) : Infinity;
   const remainingMTokens = inputCostPerMToken > 0 ? (balance / quotaPerUnit / inputCostPerMToken) : Infinity;
@@ -316,26 +432,37 @@ async function create_token({ name, remain_quota = 500000, unlimited_quota = fal
   const res = await API.post('/api/token/', body);
   if (!res.data.success) throw new Error(res.data.message || 'Failed to create token');
   // v0.12.6+: POST no longer returns the key. Look up the new token by name and fetch its key.
-  let key = res.data.data ? `sk-${res.data.data}` : null;
+  let tokenId = null;
+  let key = typeof res.data.data === 'string' ? normalizeApiKey(res.data.data) : '';
+  if (res.data.data && typeof res.data.data === 'object') {
+    tokenId = res.data.data.id || res.data.data.token_id || null;
+    key = normalizeApiKey(res.data.data.key || '');
+  }
   if (!key) {
     try {
-      const listRes = await API.get('/api/token/?p=0&page_size=50');
+      const listRes = await API.get('/api/token/?p=1&page_size=50');
       const { items } = extractList(listRes.data);
-      const created = items.find(t => t.name === name);
+      const created = items
+        .filter(t => t.name === name)
+        .sort((a, b) => (b.created_time || b.id || 0) - (a.created_time || a.id || 0))[0];
       if (created) {
+        tokenId = created.id || tokenId;
         const keyRes = await API.post(`/api/token/${created.id}/key`);
         if (keyRes.data?.success && keyRes.data.data?.key) {
-          key = `sk-${keyRes.data.data.key}`;
+          key = normalizeApiKey(keyRes.data.data.key);
         }
       }
     } catch { /* ignore */ }
   }
-  return {
+  const result = {
     success: true,
-    key,
-    message: key ? `Token created! Key: ${key}` : 'Token created (key in token list)',
-    _action: key ? { type: 'copy', value: key, label: 'Copy API Key' } : null,
+    token_id: tokenId,
+    key_revealed_to_user: !!key,
+    message: key
+      ? 'Token created. Raw key copied/displayed locally and withheld from the assistant.'
+      : 'Token created. Retrieve or copy the key from the token list.',
   };
+  return withLocalAction(result, key ? { type: 'copy', value: key, label: 'Copy API Key' } : null);
 }
 
 async function delete_token({ token_id }) {
@@ -437,6 +564,6 @@ export async function executeTool(name, args) {
   try {
     return await fn(args || {});
   } catch (err) {
-    return { error: err.message || 'Tool execution failed' };
+    return sanitizeToolResultForLLM({ error: err.message || 'Tool execution failed' });
   }
 }

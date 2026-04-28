@@ -12,6 +12,7 @@ export const CHANNEL_TYPES = [
   { value: 20, label: 'OpenRouter', color: '#6366f1' },
   { value: 42, label: 'Mistral AI', color: '#f97316' },
   { value: 40, label: 'SiliconCloud', color: '#6d28d9' },
+  { value: 44, label: 'MokaAI', color: '#7c3aed' },
   { value: 17, label: '阿里通义千问', color: '#6236ff' },
   { value: 26, label: '智谱 GLM', color: '#3054e4' },
   { value: 25, label: 'Moonshot', color: '#000000' },

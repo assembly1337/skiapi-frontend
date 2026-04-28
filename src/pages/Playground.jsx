@@ -15,7 +15,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { API } from '../api';
 import { showError, showSuccess, extractList, copy } from '../utils';
-import { isSafeImageUrl, safeJsonParse } from '../utils/security';
+import { isSafeImageUrl, isSafeUrl, safeJsonParse } from '../utils/security';
 import PageHeader from '../components/common/PageHeader';
 import { useTranslation } from 'react-i18next';
 import i18n from '../i18n';
@@ -24,7 +24,7 @@ import i18n from '../i18n';
 const MdComponents = {
   p: ({ children }) => <Typography variant="body2" sx={{ fontSize: '0.85rem', lineHeight: 1.8, mb: 0.8, '&:last-child': { mb: 0 } }}>{children}</Typography>,
   a: ({ href, children }) => {
-    const safe = typeof href === 'string' && /^(https?:|mailto:|\/)/i.test(href.trim());
+    const safe = isSafeUrl(href);
     return <a href={safe ? href : undefined} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', textDecoration: 'underline dotted' }}>{children}</a>;
   },
   img: ({ src, alt }) => {
@@ -383,7 +383,7 @@ export default function Playground() {
   // Auto-fetch API key from existing tokens
   useEffect(() => {
     if (apiKey) return;
-    API.get('/api/token/?p=0&page_size=1').then(res => {
+    API.get('/api/token/?p=1&page_size=1').then(res => {
       const items = res.data.data?.items || (Array.isArray(res.data.data) ? res.data.data : []);
       if (items[0]?.key) {
         const key = 'sk-' + items[0].key;

@@ -195,9 +195,13 @@ export default function User() {
             <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('用户名')} value={form.username} onChange={set('username')} /></Grid>
             <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('显示名称')} value={form.display_name || ''} onChange={set('display_name')} /></Grid>
             <Grid size={12}><TextField fullWidth label={t('密码')} type="password" value={form.password} onChange={set('password')} placeholder={editUser ? t('留空不修改') : ''} /></Grid>
-            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('分组')} value={form.group || 'default'} onChange={set('group')} /></Grid>
-            <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('额度')} type="number" value={form.quota} onChange={set('quota')} /></Grid>
-            <Grid size={{ xs: 12, sm: 4 }}>
+            {editUser && (
+              <>
+                <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('分组')} value={form.group || 'default'} onChange={set('group')} /></Grid>
+                <Grid size={{ xs: 12, sm: 4 }}><TextField fullWidth label={t('额度')} type="number" value={form.quota} onChange={set('quota')} /></Grid>
+              </>
+            )}
+            <Grid size={{ xs: 12, sm: editUser ? 4 : 12 }}>
               <FormControl fullWidth size="small">
                 <InputLabel>{t('角色')}</InputLabel>
                 <Select value={form.role} onChange={set('role')} label={t('角色')}>

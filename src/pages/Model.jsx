@@ -21,7 +21,24 @@ import ConfirmDialog from '../components/common/ConfirmDialog';
 import AnimatedDialog from '../components/common/AnimatedDialog';
 import { useTranslation } from 'react-i18next';
 
-const defaultForm = { model_name: '', display_name: '', description: '', enabled: true };
+const defaultForm = {
+  model_name: '',
+  description: '',
+  icon: '',
+  tags: '',
+  vendor_id: 0,
+  endpoints: '',
+  status: 1,
+  sync_official: 1,
+  name_rule: 0,
+};
+
+const nameRuleKey = (rule) => {
+  if (rule === 1) return '前缀匹配';
+  if (rule === 2) return '包含匹配';
+  if (rule === 3) return '后缀匹配';
+  return '精确匹配';
+};
 
 export default function Model() {
   const { t } = useTranslation();
@@ -77,6 +94,7 @@ export default function Model() {
   };
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target?.value ?? e }));
+  const setInt = (k) => (e) => setForm(f => ({ ...f, [k]: parseInt(e.target.value, 10) || 0 }));
 
   // ── Sorting (client-side, on the current page) ─────────────────────────
   const sorted = useMemo(() => {
@@ -127,8 +145,16 @@ export default function Model() {
   };
 
   const exportAllCSV = () => {
-    const rows = [['id', 'model_name', 'display_name', 'description']];
-    models.forEach(m => rows.push([m.id, m.model_name, m.display_name || '', (m.description || '').replace(/\n/g, ' ')]));
+    const rows = [['id', 'model_name', 'status', 'name_rule', 'tags', 'vendor_id', 'description']];
+    models.forEach(m => rows.push([
+      m.id,
+      m.model_name,
+      m.status ?? '',
+      m.name_rule ?? '',
+      m.tags || '',
+      m.vendor_id ?? '',
+      (m.description || '').replace(/\n/g, ' '),
+    ]));
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
@@ -149,14 +175,14 @@ export default function Model() {
       if (prefix) providers.add(prefix);
     });
     return {
-      withDisplayName: models.filter(m => m.display_name).length,
+      active: models.filter(m => m.status !== 0).length,
       providers: providers.size,
     };
   }, [models]);
 
   return (
     <Box>
-      <PageHeader icon={Inventory2} title={t('模型管理')} subtitle={`${total} ${t('个模型')} · ${stats.providers} ${t('提供商')} · ${stats.withDisplayName} ${t('已配置显示名')}`}
+      <PageHeader icon={Inventory2} title={t('模型管理')} subtitle={`${total} ${t('个模型')} · ${stats.providers} ${t('提供商')} · ${stats.active} ${t('启用')}`}
         actions={
           <>
             <SearchBar value={search} onChange={setSearch} onSearch={refresh} onRefresh={refresh} placeholder={t('搜索模型...')} />
@@ -203,14 +229,16 @@ export default function Model() {
               <TableCell sortDirection={orderBy === 'model_name' ? order : false}>
                 <TableSortLabel active={orderBy === 'model_name'} direction={orderBy === 'model_name' ? order : 'asc'} onClick={() => handleSort('model_name')}>{t('模型名称')}</TableSortLabel>
               </TableCell>
-              <TableCell>{t('显示名称')}</TableCell>
+              <TableCell>{t('状态')}</TableCell>
+              <TableCell>{t('匹配规则')}</TableCell>
+              <TableCell>{t('标签')}</TableCell>
               <TableCell>{t('描述')}</TableCell>
               <TableCell align="right">{t('操作')}</TableCell>
             </TableRow></TableHead>
             <TableBody>
               {loading ? <TableSkeleton rows={5} columns={6} /> :
                 sorted.length === 0 ? (
-                  <TableRow><TableCell colSpan={6}>
+                  <TableRow><TableCell colSpan={8}>
                     <EmptyState icon={Inventory2} title={t('暂无模型')} description={t('添加模型以配置可用的 AI 模型')}
                       actionLabel={t('添加模型')} onAction={() => openEdit(null)} />
                   </TableCell></TableRow>
@@ -232,7 +260,18 @@ export default function Model() {
                           </Tooltip>
                         </Stack>
                       </TableCell>
-                      <TableCell>{m.display_name || '-'}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={m.status === 0 ? t('禁用') : t('启用')}
+                          size="small"
+                          color={m.status === 0 ? 'default' : 'success'}
+                          variant={m.status === 0 ? 'outlined' : 'filled'}
+                        />
+                      </TableCell>
+                      <TableCell>{t(nameRuleKey(m.name_rule))}</TableCell>
+                      <TableCell sx={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {m.tags || '-'}
+                      </TableCell>
                       <TableCell sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.8rem' }}>{m.description || '-'}</TableCell>
                       <TableCell align="right">
                         <Stack direction="row" spacing={0.5} justifyContent="flex-end">
@@ -255,7 +294,30 @@ export default function Model() {
         <DialogContent>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
             <Grid size={12}><TextField fullWidth label={t('模型名称')} value={form.model_name} onChange={set('model_name')} /></Grid>
-            <Grid size={12}><TextField fullWidth label={t('显示名称')} value={form.display_name || ''} onChange={set('display_name')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField fullWidth select label={t('状态')} value={form.status ?? 1} onChange={setInt('status')}>
+                <MenuItem value={1}>{t('启用')}</MenuItem>
+                <MenuItem value={0}>{t('禁用')}</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField fullWidth select label={t('匹配规则')} value={form.name_rule ?? 0} onChange={setInt('name_rule')}>
+                <MenuItem value={0}>{t('精确匹配')}</MenuItem>
+                <MenuItem value={1}>{t('前缀匹配')}</MenuItem>
+                <MenuItem value={2}>{t('包含匹配')}</MenuItem>
+                <MenuItem value={3}>{t('后缀匹配')}</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('图标')} value={form.icon || ''} onChange={set('icon')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label={t('标签')} value={form.tags || ''} onChange={set('tags')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}><TextField fullWidth label="Vendor ID" type="number" value={form.vendor_id || 0} onChange={setInt('vendor_id')} /></Grid>
+            <Grid size={{ xs: 12, sm: 6 }}>
+              <TextField fullWidth select label="Sync Official" value={form.sync_official ?? 1} onChange={setInt('sync_official')}>
+                <MenuItem value={1}>{t('启用')}</MenuItem>
+                <MenuItem value={0}>{t('禁用')}</MenuItem>
+              </TextField>
+            </Grid>
+            <Grid size={12}><TextField fullWidth label={t('端点配置 JSON')} value={form.endpoints || ''} onChange={set('endpoints')} multiline rows={2} /></Grid>
             <Grid size={12}><TextField fullWidth label={t('描述')} value={form.description || ''} onChange={set('description')} multiline rows={2} /></Grid>
           </Grid>
         </DialogContent>
