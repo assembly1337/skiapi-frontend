@@ -4,7 +4,7 @@
 
 Current verified SKIAPI side-load:
 
-- URL: `http://43.153.139.136:3003/`
+- URL: `http://<side-load-host>:3003/`
 - Backend: `newapi-app-skiapi`, `calciumion/new-api@sha256:a12629e8aacc2a4edcabf032abe19b48fed4cc814f4a668439e9949ae200c560`
 - Upstream source reference: `Calcium-Ion/new-api` `db48108d21786eaa510d86d05afde318630ada0f` (`2026-04-28T20:29:23+08:00`)
 - Public TCP open: `22`, `80`, `3003`, `8080`
@@ -30,7 +30,7 @@ Latest Nginx hardening verified:
 
 Requested target:
 
-- SSH host: `43.153.139.136`
+- SSH host: `<side-load-host>`
 - SSH user: `root`
 
 This file includes both the initial target identification smoke test and the later authorized side-load install/hardening on the same host. Temporary `/tmp/smoke_*` files created during HTTP checks were removed.
@@ -39,7 +39,7 @@ This file includes both the initial target identification smoke test and the lat
 
 Current public SKIAPI side-load target:
 
-- URL: `http://43.153.139.136:3003/`
+- URL: `http://<side-load-host>:3003/`
 - Static root: `/var/www/skiapi-new-frontend`
 - Nginx site: `/etc/nginx/sites-enabled/skiapi-new-frontend`
 - Public listener: `3003`
@@ -51,7 +51,7 @@ Current public SKIAPI side-load target:
 - Logs: `/opt/skiapi-newapi/logs`
 - Latest DB backup before backend restart: `/opt/skiapi-newapi/data/one-api.db.bak-20260428-205708`
 
-Do not use `43.153.139.136:8080` or port `80` for SKIAPI deployment checks; those ports belong to the existing TH-Platform services.
+Do not use `<side-load-host>:8080` or port `80` for SKIAPI deployment checks; those ports belong to the existing TH-Platform services.
 
 ## SSH Result
 
@@ -62,7 +62,7 @@ Do not use `43.153.139.136:8080` or port `80` for SKIAPI deployment checks; thos
 
 ## Finding: Provided Host Is Not The SKIAPI/NewAPI Host
 
-Evidence from `43.153.139.136`:
+Evidence from `<side-load-host>`:
 
 - No `nginx` binary: `nginx: command not found`
 - No nginx config dirs: `/etc/nginx`, `/etc/nginx/sites-enabled`, `/etc/nginx/conf.d` missing
@@ -84,8 +84,8 @@ Active services indicate this is a TH-Platform node:
 
 HTTP evidence:
 
-- `http://43.153.139.136/`: `200 OK`, title begins `TH-Platform Live Preview`
-- `http://43.153.139.136:8080/`: `404 Not Found`
+- `http://<side-load-host>/`: `200 OK`, title begins `TH-Platform Live Preview`
+- `http://<side-load-host>:8080/`: `404 Not Found`
 - `http://127.0.0.1:8080/api/status` on host: `404 Not Found`
 
 ## Finding: `skiapi.dev` Points Elsewhere And Is Currently 502
@@ -93,22 +93,22 @@ HTTP evidence:
 Local DNS:
 
 - `skiapi.dev` CNAME: `us.xn--6krz1l.xn--io0a7i`
-- Resolved A record: `152.32.146.205`
+- Resolved A record: `<production-host-ip>`
 
 External HTTP checks:
 
 - `https://skiapi.dev/`: `502 Bad Gateway`
 - `http://skiapi.dev/api/status`: `502 Bad Gateway`
-- `https://152.32.146.205/` with `Host: skiapi.dev`: `502 Bad Gateway`
-- `http://152.32.146.205/` with `Host: skiapi.dev`: `502 Bad Gateway`
+- `https://<production-host-ip>/` with `Host: skiapi.dev`: `502 Bad Gateway`
+- `http://<production-host-ip>/` with `Host: skiapi.dev`: `502 Bad Gateway`
 
 ## Impact
 
-The provided SSH target cannot validate or deploy this `skiapi` frontend because it is not running the expected NewAPI/nginx stack. The actual `skiapi.dev` host appears to be `152.32.146.205`, but SSH credentials for that host were not provided.
+The provided SSH target cannot validate or deploy this `skiapi` frontend because it is not running the expected NewAPI/nginx stack. The actual `skiapi.dev` host appears to be `<production-host-ip>`, but SSH credentials for that host were not provided.
 
 ## Next Required Evidence
 
-To continue production smoke testing or deployment, provide SSH access for `152.32.146.205` or the actual host behind `skiapi.dev`.
+To continue production smoke testing or deployment, provide SSH access for `<production-host-ip>` or the actual host behind `skiapi.dev`.
 
 Minimum next smoke test once access is available:
 
@@ -120,7 +120,7 @@ Minimum next smoke test once access is available:
 - verify security headers
 - verify `/api/assistant/config` and `/api/assistant/chat` behavior
 
-## Side Install On `43.153.139.136` - 2026-04-28
+## Side Install On `<side-load-host>` - 2026-04-28
 
 Installed without taking over the existing TH-Platform ports:
 
@@ -185,7 +185,7 @@ Final external port check:
 
 Final public smoke:
 
-- `http://43.153.139.136:3003/`: `200 OK`
-- `http://43.153.139.136:3003/api/status`: `200 OK`, NewAPI `v1.0.0-alpha.1`
+- `http://<side-load-host>:3003/`: `200 OK`
+- `http://<side-load-host>:3003/api/status`: `200 OK`, NewAPI `v1.0.0-alpha.1`
 - Security headers present on public `3003`: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`, `Content-Security-Policy-Report-Only`
 - `npm run smoke:skiapi`: passed 13 checks after the final deploy; SPA shell hash `e97043be211c`

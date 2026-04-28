@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 
-const DEFAULT_BASE_URL = 'http://43.153.139.136:3003';
+const DEFAULT_BASE_URL = 'http://127.0.0.1:3003';
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 const securityHeaderChecks = [

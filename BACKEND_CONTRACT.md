@@ -16,17 +16,17 @@ Production may be a fork. Any endpoint listed as custom below must be confirmed 
 
 Current non-production side-load target:
 
-- Public URL: `http://43.153.139.136:3003/`
+- Public URL: `http://<side-load-host>:3003/`
 - Frontend static root: `/var/www/skiapi-new-frontend/`
 - Backend container: `newapi-app-skiapi`
 - Backend image: `calciumion/new-api@sha256:a12629e8aacc2a4edcabf032abe19b48fed4cc814f4a668439e9949ae200c560`
 - Backend binding: `127.0.0.1:3001->3000`
 - Backend data path: `/opt/skiapi-newapi/data/one-api.db`
 - Latest DB backup before refresh/restart: `/opt/skiapi-newapi/data/one-api.db.bak-20260428-205708`
-- Public smoke: `GET http://43.153.139.136:3003/api/status` returned `200 OK`, NewAPI `v1.0.0-alpha.1`
+- Public smoke: `GET http://<side-load-host>:3003/api/status` returned `200 OK`, NewAPI `v1.0.0-alpha.1`
 - Edge hardening smoke passed: index `no-store`, `/site.webmanifest` `application/manifest+json`, missing static asset `404`, and `POST /api/setup` blocked with `403`.
 
-This side-load is not `skiapi.dev` production. `43.153.139.136:80` and `:8080` belong to the existing TH-Platform stack.
+This side-load is not `skiapi.dev` production. `<side-load-host>:80` and `:8080` belong to the existing TH-Platform stack.
 
 ## Auth Contract
 

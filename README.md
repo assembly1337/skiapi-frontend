@@ -22,7 +22,7 @@ npm install
 npm run dev
 ```
 
-本地 Vite proxy 默认指向 `http://127.0.0.1:3001`。如果需要临时连当前 side-load 后端代理，显式设置 `VITE_PROXY_TARGET=http://43.153.139.136:3003`，不要把公网目标写成默认值。
+本地 Vite proxy 默认指向 `http://127.0.0.1:3001`。如果需要临时连授权的远端后端代理，显式设置 `VITE_PROXY_TARGET=<authorized-backend-url>`，不要把公网目标写成默认值。
 
 ## 构建
 
@@ -41,12 +41,16 @@ npm run preview
 - [NewAPI](https://github.com/Calcium-Ion/new-api) — 后端网关
 - [YuKiKo](https://github.com/dwgx/YuKiKo) — SKIAPI 配套项目
 
-## 当前 Side-load
+## 部署
 
-- Frontend: `http://43.153.139.136:3003/`
-- Static root: `/var/www/skiapi-new-frontend/`
-- Backend container: `newapi-app-skiapi`
-- Backend binding: `127.0.0.1:3001->3000`
-- Data: `/opt/skiapi-newapi/data/one-api.db`
+复制 `scripts/config.example.py` 为 `scripts/config.py`，填写私有主机、SSH、目录和端口配置后执行：
 
-`43.153.139.136:80` 和 `:8080` 是现有 TH-Platform 服务，不是 SKIAPI 发布目标。
+```bash
+python scripts/deploy.py
+```
+
+本仓库不在公开文档中保存公网部署目标。远端测试请通过运行时参数指定：
+
+```bash
+npm run smoke:skiapi -- --base-url <authorized-frontend-url>
+```

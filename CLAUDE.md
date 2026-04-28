@@ -46,9 +46,9 @@ MUI v7 removed `<Grid item xs={12}>` syntax. Must use `<Grid size={{ xs: 12, sm:
 
 ## Deploy
 
-Current side-load VPS: `http://43.153.139.136:3003/`. Nginx serves static files from `/var/www/skiapi-new-frontend/`, proxies `/api/` and `/v1/` to backend on `127.0.0.1:3001`. Backend: Docker container `newapi-app-skiapi` (calciumion/new-api:latest) mapping `127.0.0.1:3001->3000`. Data: `/opt/skiapi-newapi/data/one-api.db` (SQLite).
+Deployment target details are private. Copy `scripts/config.example.py` to `scripts/config.py` and fill in the authorized host, ports, backend container, and data path locally. Do not commit `scripts/config.py`.
 
-Do not treat `43.153.139.136:8080` or port `80` as SKIAPI: they belong to the existing TH-Platform stack. `skiapi.dev` currently points to a different host and is not verified by this side-load.
+The deploy script serves static files from the configured `REMOTE_DIR` and proxies `/api/` and `/v1/` to the configured backend port. Keep public hostnames/IPs out of Markdown docs and examples.
 
 ## Chunk Loading
 

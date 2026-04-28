@@ -2,7 +2,7 @@
 VPS connection config — shared by all scripts.
 Copy this file to config.py and fill in your credentials.
 """
-HOST = '43.153.139.136'
+HOST = 'your-vps-host'
 PORT = 22
 USER = 'root'
 PASSWORD = 'your-password-here'
@@ -14,7 +14,7 @@ HOST_KEY_SHA256 = ''
 KNOWN_HOSTS_PATH = ''
 ALLOW_UNKNOWN_HOST = False
 
-# Current side-load layout on 43.153.139.136. This is not skiapi.dev production.
+# Example side-load layout. Replace these values in local config.py.
 REMOTE_DIR = '/var/www/skiapi-new-frontend'
 NGINX_CONF = '/etc/nginx/sites-enabled/skiapi-new-frontend'
 BACKEND_CONTAINER = 'newapi-app-skiapi'
