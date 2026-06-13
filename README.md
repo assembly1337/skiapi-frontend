@@ -54,3 +54,13 @@ python scripts/deploy.py
 ```bash
 npm run smoke:skiapi -- --base-url <authorized-frontend-url>
 ```
+
+## Scope And Deployment Boundary
+
+This repository is the admin frontend only. It expects a compatible NewAPI/SKIAPI backend and does not replace backend authentication, billing, model routing, or key storage.
+
+- Configure the API base URL for your own deployment.
+- Do not commit production hostnames, SSH details, admin tokens, or private deployment scripts.
+- Test admin permissions against a staging backend before exposing the panel publicly.
+- When documenting bugs, redact API keys, user identifiers, payment data, and backend logs.
+
