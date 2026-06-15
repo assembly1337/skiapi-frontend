@@ -23,7 +23,7 @@ export default function Midjourney() {
 
   return (
     <Box>
-      <PageHeader icon={Palette} title={t('绘图日志')} subtitle={`共 ${total} 条记录`}
+      <PageHeader icon={Palette} title={t('绘图日志')} subtitle={t('共 {{total}} 条记录', { total })}
         actions={
           <SearchBar value="" onChange={() => {}} onRefresh={refresh} placeholder={t('刷新...')} />
         }

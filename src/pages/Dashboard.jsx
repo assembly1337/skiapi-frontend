@@ -111,7 +111,7 @@ export default function Dashboard() {
   const [customAnchor, setCustomAnchor] = useState(null);
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [rangeLabel, setRangeLabel] = useState('7天');
+  const [rangeLabel, setRangeLabel] = useState(() => t('7天'));
 
   const RANGE_OPTIONS = [
     { value: '1', label: t('今日') },

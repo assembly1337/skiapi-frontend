@@ -52,7 +52,7 @@ export default function ModelDeployment() {
 
   return (
     <Box>
-      <PageHeader icon={RocketLaunch} title={t('模型部署')} subtitle={`共 ${total} 个部署`}
+      <PageHeader icon={RocketLaunch} title={t('模型部署')} subtitle={t('共 {{total}} 个部署', { total })}
         actions={
           <SearchBar value={search} onChange={setSearch} onSearch={refresh} onRefresh={refresh} placeholder={t('搜索部署...')} />
         }

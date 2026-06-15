@@ -334,7 +334,7 @@ export default function Settings() {
             {t('配置第三方聊天客户端的链接，支持模板变量')}: {'{key}'}, {'{address}'}, {'{model}'}
           </Alert>
           <JsonField label={t('聊天配置 (JSON)')} value={opt('Chats', '[]')} onChange={setRawOpt('Chats')} rows={12}
-            helperText='格式: [{"ChatGPT Next Web":"https://...?key={key}"}] 或更复杂结构' />
+            helperText={t('格式: [{"ChatGPT Next Web":"https://...?key={key}"}] 或更复杂结构')} />
           <SaveBtn keys={['Chats']} />
         </SC>
       </TabPanel>
@@ -450,11 +450,11 @@ export default function Settings() {
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <JsonField label={t('分组倍率 (JSON)')} value={opt('GroupRatio', '{}')} onChange={setRawOpt('GroupRatio')} rows={5}
-                helperText='格式: {"default":1,"vip":0.8}' />
+                helperText={t('格式: {"default":1,"vip":0.8}')} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <JsonField label={t('用户可用分组 (JSON)')} value={opt('UserUsableGroups', '[]')} onChange={setRawOpt('UserUsableGroups')} rows={5}
-                helperText='格式: ["default","vip"]' />
+                helperText={t('格式: ["default","vip"]')} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <JsonField label={t('分组间倍率 (JSON)')} value={opt('GroupGroupRatio', '{}')} onChange={setRawOpt('GroupGroupRatio')} rows={4} />
@@ -470,19 +470,19 @@ export default function Settings() {
           <Grid container spacing={2}>
             <Grid size={12}>
               <JsonField label={t('模型固定价格 (JSON)')} value={opt('ModelPrice', '{}')} onChange={setRawOpt('ModelPrice')} rows={6}
-                helperText='格式: {"gpt-4":0.03,"claude-3-opus":0.015} — 每次调用固定扣费' />
+                helperText={t('格式: {"gpt-4":0.03,"claude-3-opus":0.015} — 每次调用固定扣费')} />
             </Grid>
             <Grid size={12}>
               <JsonField label={t('模型倍率 (JSON)')} value={opt('ModelRatio', '{}')} onChange={setRawOpt('ModelRatio')} rows={6}
-                helperText='格式: {"gpt-4":15,"gpt-3.5-turbo":0.75} — 按 token 计费的倍率' />
+                helperText={t('格式: {"gpt-4":15,"gpt-3.5-turbo":0.75} — 按 token 计费的倍率')} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <JsonField label={t('补全倍率 (JSON)')} value={opt('CompletionRatio', '{}')} onChange={setRawOpt('CompletionRatio')} rows={4}
-                helperText='自定义模型补全 token 倍率' />
+                helperText={t('自定义模型补全 token 倍率')} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <JsonField label={t('缓存倍率 (JSON)')} value={opt('CacheRatio', '{}')} onChange={setRawOpt('CacheRatio')} rows={4}
-                helperText='Prompt 缓存计费倍率' />
+                helperText={t('Prompt 缓存计费倍率')} />
             </Grid>
             <Grid size={{ xs: 12, sm: 6 }}>
               <JsonField label={t('缓存创建倍率 (JSON)')} value={opt('CreateCacheRatio', '{}')} onChange={setRawOpt('CreateCacheRatio')} rows={3} />
@@ -513,7 +513,7 @@ export default function Settings() {
             <Grid size={{ xs: 6, sm: 4 }}><TextField fullWidth label={t('最大成功请求数')} type="number" value={opt('ModelRequestRateLimitSuccessCount', 0)} onChange={setOpt('ModelRequestRateLimitSuccessCount')} helperText={t('0 = 不限制')} /></Grid>
             <Grid size={12}>
               <JsonField label={t('分组速率限制 (JSON)')} value={opt('ModelRequestRateLimitGroup', '{}')} onChange={setRawOpt('ModelRequestRateLimitGroup')} rows={5}
-                helperText='格式: {"default":[200,100],"vip":[0,1000]} — [最大请求数, 最大成功数]' />
+                helperText={t('格式: {"default":[200,100],"vip":[0,1000]} — [最大请求数, 最大成功数]')} />
             </Grid>
           </Grid>
           <SaveBtn keys={['ModelRequestRateLimitDurationMinutes', 'ModelRequestRateLimitCount', 'ModelRequestRateLimitSuccessCount', 'ModelRequestRateLimitGroup']} />
@@ -533,11 +533,11 @@ export default function Settings() {
             <Grid size={{ xs: 6, sm: 3 }}><TextField fullWidth label={t('Ping 间隔(秒)')} type="number" value={opt('general_setting.ping_interval_seconds', 30)} onChange={setOpt('general_setting.ping_interval_seconds')} /></Grid>
             <Grid size={12}>
               <JsonField label={t('思考模型黑名单 (JSON)')} value={opt('global.thinking_model_blacklist', '[]')} onChange={setRawOpt('global.thinking_model_blacklist')} rows={3}
-                helperText='排除 -thinking 后缀处理的模型列表' />
+                helperText={t('排除 -thinking 后缀处理的模型列表')} />
             </Grid>
             <Grid size={12}>
               <JsonField label={t('ChatCompletions 转 Responses 策略 (JSON)')} value={opt('global.chat_completions_to_responses_policy', '{}')} onChange={setRawOpt('global.chat_completions_to_responses_policy')} rows={5}
-                helperText='格式: {"enabled":true,"all_channels":false,"channel_ids":[1],"model_patterns":["^gpt-4o.*$"]}' />
+                helperText={t('格式: {"enabled":true,"all_channels":false,"channel_ids":[1],"model_patterns":["^gpt-4o.*$"]}')} />
             </Grid>
           </Grid>
           <SaveBtn keys={['general_setting.ping_interval_seconds', 'global.thinking_model_blacklist', 'global.chat_completions_to_responses_policy']} />
@@ -551,11 +551,11 @@ export default function Settings() {
             <Grid size={{ xs: 6, sm: 4 }}><TextField fullWidth label={t('Thinking 预算比例')} type="number" value={opt('claude.thinking_adapter_budget_tokens_percentage', 0.8)} onChange={setOpt('claude.thinking_adapter_budget_tokens_percentage')} helperText={t('最小 0.1')} /></Grid>
             <Grid size={12}>
               <JsonField label={t('自定义请求头 (JSON)')} value={opt('claude.model_headers_settings', '{}')} onChange={setRawOpt('claude.model_headers_settings')} rows={5}
-                helperText='格式: {"claude-3-7-sonnet":{"anthropic-beta":["output-128k"]}}' />
+                helperText={t('格式: {"claude-3-7-sonnet":{"anthropic-beta":["output-128k"]}}')} />
             </Grid>
             <Grid size={12}>
               <JsonField label={t('默认 max_tokens (JSON)')} value={opt('claude.default_max_tokens', '{}')} onChange={setRawOpt('claude.default_max_tokens')} rows={3}
-                helperText='格式: {"claude-3-opus":4096}' />
+                helperText={t('格式: {"claude-3-opus":4096}')} />
             </Grid>
           </Grid>
           <SaveBtn keys={['claude.thinking_adapter_budget_tokens_percentage', 'claude.model_headers_settings', 'claude.default_max_tokens']} />

@@ -355,7 +355,7 @@ ${extra}`;
     const msg = (text || input).trim();
     if (!msg || loading) return;
     if (!checkRate(config.rateLimit)) {
-      setMessages(p => [...p, { role: 'user', content: msg }, { role: 'assistant', content: '呜…你发太快了啦！让⑨休息一下嘛！(每分钟限制)' }]);
+      setMessages(p => [...p, { role: 'user', content: msg }, { role: 'assistant', content: t('呜…你发太快了啦！让⑨休息一下嘛！(每分钟限制)') }]);
       setInput('');
       return;
     }
@@ -409,9 +409,9 @@ ${extra}`;
             if (result?._action?.type === 'copy') {
               try {
                 await copy(result._action.value);
-                showSuccess('新 API Key 已复制到剪贴板（不会发送给助手）');
+                showSuccess(t('新 API Key 已复制到剪贴板（不会发送给助手）'));
               } catch {
-                window.prompt('新 API Key（仅本地显示，不会发送给助手）', result._action.value);
+                window.prompt(t('新 API Key（仅本地显示，不会发送给助手）'), result._action.value);
               }
             }
             llmMsgs.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(sanitizeToolResultForLLM(result)) });
@@ -426,7 +426,7 @@ ${extra}`;
             m.push({ role: 'assistant', content: finalContent });
           } else {
             // LLM returned empty — show fallback instead of empty bubble
-            m.push({ role: 'assistant', content: 'あたいは最強だけど…ちょっと答えが出てこないよ！もう一回聞いてね～ ⑨' });
+            m.push({ role: 'assistant', content: t('あたいは最強だけど…ちょっと答えが出てこないよ！もう一回聞いてね～ ⑨') });
           }
           return m;
         });
@@ -436,7 +436,7 @@ ${extra}`;
       if (maxRounds <= 0) {
         setMessages(p => {
           const m = [...p].filter(x => !x._tooling);
-          m.push({ role: 'assistant', content: '呜…想得太久了！请再问一次吧～ ⑨' });
+          m.push({ role: 'assistant', content: t('呜…想得太久了！请再问一次吧～ ⑨') });
           return m;
         });
       }
@@ -448,13 +448,13 @@ ${extra}`;
         let friendly;
         switch (e.message) {
           case 'rate_limited':
-            friendly = '呜…你问得太快了啦！让⑨休息一下嘛～(稍后再试)';
+            friendly = t('呜…你问得太快了啦！让⑨休息一下嘛～(稍后再试)');
             break;
           case 'login_required':
-            friendly = '要和⑨聊天得先登录哦！去右上角登录一下吧～';
+            friendly = t('要和⑨聊天得先登录哦！去右上角登录一下吧～');
             break;
           case 'not_configured':
-            friendly = 'あたい现在没法工作啦…管理员还没配好钥匙呢 (o´ｪ`o)';
+            friendly = t('あたい现在没法工作啦…管理员还没配好钥匙呢 (o´ｪ`o)');
             break;
           default:
             friendly = redactSecretsFromText(e.message || String(e), { includeCodeLabels: true });
@@ -667,7 +667,7 @@ function ChatMessages({ messages, loading, messagesEnd, handleSend, theme }) {
                       {(msg._tools || []).map((tn, j) => {
                         const meta = TOOL_META[tn] || { label: tn, icon: '⚙️' };
                         return (
-                          <Chip key={j} label={`${meta.icon} ${meta.label}`} size="small"
+                          <Chip key={j} label={`${meta.icon} ${t(meta.label)}`} size="small"
                             sx={{
                               height: 22, fontSize: '0.68rem', fontWeight: 500,
                               bgcolor: alpha(CIRNO_ICE, 0.1),

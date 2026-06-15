@@ -23,7 +23,7 @@ export default function Task() {
 
   return (
     <Box>
-      <PageHeader icon={TaskAlt} title={t('任务日志')} subtitle={`共 ${total} 条任务`}
+      <PageHeader icon={TaskAlt} title={t('任务日志')} subtitle={t('共 {{total}} 条任务', { total })}
         actions={
           <SearchBar value="" onChange={() => {}} onRefresh={refresh} placeholder={t('刷新...')} />
         }

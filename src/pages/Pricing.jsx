@@ -455,7 +455,7 @@ export default function Pricing() {
     const c = {};
     coreModels.forEach(m => {
       const v = vendorMap[m.vendor_id];
-      const name = v?.name || '未知';
+      const name = v?.name || t('未知');
       c[name] = (c[name] || 0) + 1;
     });
     return c;
