@@ -3,12 +3,12 @@ import {
   DialogTitle, DialogContent, DialogActions, Button, TextField, Grid,
   Select, MenuItem, FormControl, InputLabel, Switch, FormControlLabel,
   Tabs, Tab, Box, Typography, Stack, Chip, CircularProgress, Tooltip,
-  IconButton, Divider, Alert,
+  IconButton, Divider, Alert, Autocomplete,
 } from '@mui/material';
 import { AutoFixHigh, ContentCopy, Delete, Add } from '@mui/icons-material';
 import AnimatedDialog from '../common/AnimatedDialog';
 import { API } from '../../api';
-import { showError, showSuccess, copy } from '../../utils';
+import { showError, showSuccess, copy, extractList } from '../../utils';
 import { CHANNEL_TYPES } from '../../constants';
 import { useTranslation } from 'react-i18next';
 
@@ -30,6 +30,7 @@ export default function ChannelDialog({ open, onClose, channel, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [fetchingModels, setFetchingModels] = useState(false);
   const [keys, setKeys] = useState(['']);
+  const [modelOptions, setModelOptions] = useState([]);
 
   useEffect(() => {
     if (open) {
@@ -43,6 +44,19 @@ export default function ChannelDialog({ open, onClose, channel, onSaved }) {
       setTab(0);
     }
   }, [open, channel]);
+
+  // Fetch available model options for autocomplete
+  useEffect(() => {
+    if (open) {
+      API.get('/api/user/models').then(res => {
+        if (res.data.success) {
+          const { items } = extractList(res.data);
+          const list = items.length > 0 ? items : (Array.isArray(res.data.data) ? res.data.data : []);
+          setModelOptions(list.map(m => typeof m === 'string' ? m : (m.id || m.model_name || '')).filter(Boolean));
+        }
+      }).catch(() => {});
+    }
+  }, [open]);
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target?.value ?? e }));
 
@@ -60,6 +74,9 @@ export default function ChannelDialog({ open, onClose, channel, onSaved }) {
       if (res.data.success && res.data.data) {
         const fetched = Array.isArray(res.data.data) ? res.data.data.join(',') : String(res.data.data);
         setForm(f => ({ ...f, models: fetched }));
+        // Merge fetched models into options
+        const fetchedArr = fetched.split(',').map(m => m.trim()).filter(Boolean);
+        setModelOptions(prev => [...new Set([...prev, ...fetchedArr])]);
         showSuccess(t('成功获取模型'));
       } else {
         showError(res.data.message || t('获取模型失败'));
@@ -147,18 +164,27 @@ export default function ChannelDialog({ open, onClose, channel, onSaved }) {
               <Button size="small" startIcon={fetchingModels ? <CircularProgress size={14} /> : <AutoFixHigh />}
                 onClick={handleFetchModels} disabled={fetchingModels} variant="outlined">{t('从上游获取模型')}</Button>
             </Stack>
-            <TextField fullWidth value={form.models || ''} onChange={set('models')} multiline rows={4}
-              placeholder={t('支持的模型列表，逗号分隔')} helperText={t('每行一个或逗号分隔')} />
-            {form.models && (
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                {form.models.split(',').filter(Boolean).map((m, i) => (
-                  <Chip key={i} label={m.trim()} size="small" variant="outlined" onDelete={() => {
-                    const arr = form.models.split(',').filter((_, j) => j !== i);
-                    setForm(f => ({ ...f, models: arr.join(',') }));
-                  }} />
-                ))}
-              </Box>
-            )}
+            <Autocomplete
+              multiple freeSolo
+              options={modelOptions}
+              value={form.models ? form.models.split(',').map(m => m.trim()).filter(Boolean) : []}
+              onChange={(_, newValue) => setForm(f => ({ ...f, models: newValue.join(',') }))}
+              filterOptions={(opts, state) => {
+                const q = state.inputValue.trim().toLowerCase();
+                const selected = new Set((form.models || '').split(',').map(m => m.trim()).filter(Boolean));
+                const filtered = opts.filter(o => !selected.has(o));
+                if (!q) return filtered;
+                return filtered.filter(o => o.toLowerCase().includes(q));
+              }}
+              renderTags={(value, getTagProps) =>
+                value.map((option, index) => (
+                  <Chip {...getTagProps({ index })} key={option} label={option} size="small" variant="outlined" />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField {...params} placeholder={t('输入或选择模型')} helperText={t('可从下拉列表选择或直接输入后按回车')} />
+              )}
+            />
             <Divider />
             <TextField fullWidth label={t('模型映射 (JSON)')} value={form.model_mapping || ''} onChange={set('model_mapping')}
               multiline rows={3} placeholder='{"原模型名": "映射模型名"}' />
